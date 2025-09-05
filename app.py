@@ -1,5 +1,6 @@
 import streamlit as st
-from transformers import pipeline, Conversation
+from transformers import pipeline
+from transformers.conversation import Conversation
 from datetime import datetime
 
 # --- Load model with caching ---
