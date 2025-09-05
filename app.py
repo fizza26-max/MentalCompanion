@@ -1,38 +1,21 @@
 import streamlit as st
+from transformers import pipeline
 from datetime import datetime
+
+# Initialize conversational pipeline once
+@st.cache_resource(show_spinner=False)
+def load_model():
+    return pipeline("conversational", model="microsoft/DialoGPT-small")
+
+conversational_pipeline = load_model()
 
 # --- Helper functions ---
 
-def generate_response(user_input, mood):
-    """
-    Simulated empathetic response generator.
-    Replace this with your fine-tuned open-source model inference.
-    """
-    user_input = user_input.lower()
-    if any(word in user_input for word in ["sad", "down", "unhappy", "depressed"]):
-        return ("I'm sorry to hear you're feeling this way. "
-                "Remember, it's okay to have tough days. "
-                "Would you like some coping strategies or resources?")
-    elif any(word in user_input for word in ["anxious", "nervous", "worried"]):
-        return ("Anxiety can be overwhelming. "
-                "Deep breathing and grounding exercises might help. "
-                "Would you like me to guide you through one?")
-    elif "coping" in user_input:
-        return ("Here are some coping strategies:\n"
-                "- Practice deep breathing\n"
-                "- Take a short walk\n"
-                "- Write down your thoughts\n"
-                "- Reach out to a trusted friend\n"
-                "Would you like resources for professional help?")
-    elif "resource" in user_input or "help" in user_input:
-        return ("Here are some resources you might find helpful:\n"
-                "- National Suicide Prevention Lifeline: 1-800-273-8255\n"
-                "- Crisis Text Line: Text HOME to 741741\n"
-                "- MentalHealth.gov: https://www.mentalhealth.gov\n"
-                "Remember, seeking help is a sign of strength.")
-    else:
-        return ("Thank you for sharing. How are you feeling today? "
-                "You can tell me about your mood or ask for coping strategies.")
+def generate_response(user_input):
+    from transformers import Conversation
+    conversation = Conversation(user_input)
+    result = conversational_pipeline(conversation)
+    return result.generated_responses[-1]
 
 def mood_emoji(mood):
     emojis = {
@@ -85,9 +68,11 @@ if st.button("Send") and user_input.strip():
     # Append user message
     st.session_state.conversation.append({"role": "user", "text": user_input})
 
-    # Generate response based on last mood logged or neutral if none
-    last_mood = st.session_state.mood_log[-1]["mood"] if st.session_state.mood_log else "Neutral"
-    response = generate_response(user_input, last_mood)
+    # Generate AI response
+    try:
+        response = generate_response(user_input)
+    except Exception as e:
+        response = "Sorry, I'm having trouble responding right now."
 
     # Append bot response
     st.session_state.conversation.append({"role": "bot", "text": response})
