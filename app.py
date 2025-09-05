@@ -1,20 +1,29 @@
 import streamlit as st
-from transformers import pipeline
+from transformers import pipeline, Conversation
 from datetime import datetime
 
-# Initialize conversational pipeline once
+# --- Load model with caching ---
 @st.cache_resource(show_spinner=False)
 def load_model():
     return pipeline("conversational", model="microsoft/DialoGPT-small")
 
-conversational_pipeline = load_model()
+try:
+    conversational_pipeline = load_model()
+except KeyError:
+    st.error(
+        "Your transformers version does not support the 'conversational' pipeline. "
+        "Please upgrade transformers to version 4.5.0 or higher."
+    )
+    st.stop()
+except Exception as e:
+    st.error(f"Error loading model: {e}")
+    st.stop()
 
 # --- Helper functions ---
 
 def generate_response(user_input):
-    from transformers import Conversation
-    conversation = Conversation(user_input)
-    result = conversational_pipeline(conversation)
+    conv = Conversation(user_input)
+    result = conversational_pipeline(conv)
     return result.generated_responses[-1]
 
 def mood_emoji(mood):
@@ -33,11 +42,11 @@ st.set_page_config(page_title="Mental Wellness Companion", page_icon="🧠")
 
 st.title("🧠 Mental Wellness Companion")
 st.markdown("""
-Welcome! This companion is here to listen, offer coping strategies, track your mood, and provide helpful resources.
+Welcome! This companion is here to listen, offer coping strategies, track your mood, and provide helpful resources.  
 *Note: This tool is not a substitute for professional mental health care.*
 """)
 
-# Session state for conversation and mood tracking
+# Initialize session state
 if "conversation" not in st.session_state:
     st.session_state.conversation = []
 if "mood_log" not in st.session_state:
@@ -71,7 +80,7 @@ if st.button("Send") and user_input.strip():
     # Generate AI response
     try:
         response = generate_response(user_input)
-    except Exception as e:
+    except Exception:
         response = "Sorry, I'm having trouble responding right now."
 
     # Append bot response
